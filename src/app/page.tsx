@@ -29,6 +29,18 @@ type PartParams = {
   infillRatio: number;
 };
 
+type Results = {
+  totalCost: number;
+  printTimeHours: number;
+  shellRatio: number;
+  shellPenalty: number;
+  materialVolumeCm3: number;
+  materialCost: number;
+  machineCost: number;
+  wallTimeHours: number;
+  infillTimeHours: number;
+};
+
 const PRESETS: Record<string, PrinterSettings> = {
   "Standard 0.4mm": {
     nozzleDiameter: 0.4,
@@ -133,7 +145,7 @@ const PART_PARAM_UNITS: { [key: string]: string } = {
 export default function Home() {
   const [printerSettings, setPrinterSettings] = useState(PRESETS["Standard 0.4mm"]);
   const [partParams, setPartParams] = useState(PART_PRESETS["Small Part"]);
-  const [results, setResults] = useState<any | null>(null);
+  const [results, setResults] = useState<Results | null>(null);
 
   const calculateResults = () => {
     const wallThickness = printerSettings.nozzleDiameter * printerSettings.numWalls;
@@ -194,7 +206,6 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-3 gap-6">
-          {/* Printer Settings Column */}
           <div className="p-4 border rounded-lg space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Settings className="w-5 h-5" />
@@ -236,7 +247,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Part Parameters Column */}
           <div className="p-4 border rounded-lg space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Box className="w-5 h-5" />
@@ -278,7 +288,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Calculation Results Column */}
           <div className="space-y-6">
             <button
                 className="w-full p-2 bg-blue-500 text-white rounded-lg font-semibold"
@@ -287,7 +296,6 @@ export default function Home() {
               Calculate
             </button>
 
-            {/* Cost Breakdown */}
             {results && (
                 <div className="p-4 border rounded-lg bg-blue-50 space-y-4">
                   <div className="flex items-center gap-2 mb-4">
@@ -313,7 +321,6 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Time Analysis */}
             {results && (
                 <div className="p-4 border rounded-lg bg-blue-50 space-y-4">
                   <div className="flex items-center gap-2 mb-4">
