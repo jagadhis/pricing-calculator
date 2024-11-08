@@ -133,6 +133,7 @@ const PART_PARAM_UNITS: { [key: string]: string } = {
 export default function Home() {
   const [printerSettings, setPrinterSettings] = useState(PRESETS["Standard 0.4mm"]);
   const [partParams, setPartParams] = useState(PART_PRESETS["Small Part"]);
+  const [results, setResults] = useState<any | null>(null);
 
   const calculateResults = () => {
     const wallThickness = printerSettings.nozzleDiameter * printerSettings.numWalls;
@@ -142,7 +143,7 @@ export default function Home() {
     const totalMaterialVolume = shellVolume + infillVolume;
 
     const shellRatio = shellVolume / totalMaterialVolume;
-    const shellPenalty = 1.0 + (Math.pow(shellRatio, 2) * 2.0);
+    const shellPenalty = 1.0 + Math.pow(shellRatio, 2) * 2.0;
 
     const crossSection = printerSettings.nozzleDiameter * printerSettings.layerHeight;
     const wallFlowRate = crossSection * printerSettings.basePrintSpeed * printerSettings.wallSpeedFactor;
@@ -150,15 +151,14 @@ export default function Home() {
 
     const wallTime = shellVolume / wallFlowRate;
     const infillTime = infillVolume / infillFlowRate;
-    const totalTime = (wallTime + infillTime) * shellPenalty * 1.3 / 3600;
+    const totalTime = ((wallTime + infillTime) * shellPenalty * 1.3) / 3600;
 
     const totalVolumeCm3 = totalMaterialVolume / 1000;
     const weightKg = (totalVolumeCm3 * printerSettings.materialDensity) / 1000;
     const materialCost = weightKg * printerSettings.materialCostPerKg;
-
     const machineCost = totalTime * printerSettings.machineCostPerHour;
 
-    return {
+    setResults({
       totalCost: materialCost + machineCost + 5.0,
       printTimeHours: totalTime,
       shellRatio,
@@ -167,23 +167,24 @@ export default function Home() {
       materialCost,
       machineCost,
       wallTimeHours: wallTime / 3600,
-      infillTimeHours: infillTime / 3600
-    };
+      infillTimeHours: infillTime / 3600,
+    });
   };
 
-  const results = calculateResults();
+  const timeBreakdownData = results
+      ? [
+        { name: 'Walls', time: results.wallTimeHours },
+        { name: 'Infill', time: results.infillTimeHours },
+      ]
+      : [];
 
-  // Generate chart data
-  const timeBreakdownData = [
-    { name: 'Walls', time: results.wallTimeHours },
-    { name: 'Infill', time: results.infillTimeHours }
-  ];
-
-  const costBreakdownData = [
-    { name: 'Material', cost: results.materialCost },
-    { name: 'Machine', cost: results.machineCost },
-    { name: 'Setup', cost: 5.0 }
-  ];
+  const costBreakdownData = results
+      ? [
+        { name: 'Material', cost: results.materialCost },
+        { name: 'Machine', cost: results.machineCost },
+        { name: 'Setup', cost: 5.0 },
+      ]
+      : [];
 
   return (
       <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -192,39 +193,41 @@ export default function Home() {
           <h1 className="text-2xl font-bold">3D Print Price Calculator</h1>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          {/* Printer Settings */}
+        <div className="grid grid-cols-3 gap-6">
+          {/* Printer Settings Column */}
           <div className="p-4 border rounded-lg space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Settings className="w-5 h-5" />
               <h2 className="text-xl font-semibold">Printer Settings</h2>
             </div>
-
             <div className="mb-4">
-              <label className="text-sm font-medium">Preset Configurations:</label>
+              <label className="text-sm font-semibold">Preset Configurations:</label>
               <select
                   className="w-full border rounded p-2 mt-1"
                   onChange={(e) => setPrinterSettings(PRESETS[e.target.value])}
               >
-                {Object.keys(PRESETS).map(preset => (
-                    <option key={preset} value={preset}>{preset}</option>
+                {Object.keys(PRESETS).map((preset) => (
+                    <option key={preset} value={preset}>
+                      {preset}
+                    </option>
                 ))}
               </select>
             </div>
-
             <div className="space-y-2">
               {Object.entries(printerSettings).map(([key, value]) => (
                   <div key={key} className="flex flex-col">
-                    <label className="text-sm font-medium">
+                    <label className="text-sm font-semibold mb-1">
                       {key.replace(/([A-Z])/g, ' $1').trim()} ({PRINTER_SETTING_UNITS[key]}):
                     </label>
                     <input
                         type="number"
                         value={value}
-                        onChange={(e) => setPrinterSettings(prev => ({
-                          ...prev,
-                          [key]: parseFloat(e.target.value)
-                        }))}
+                        onChange={(e) =>
+                            setPrinterSettings((prev) => ({
+                              ...prev,
+                              [key]: parseFloat(e.target.value),
+                            }))
+                        }
                         className="border rounded p-1"
                         step="any"
                     />
@@ -233,38 +236,40 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Part Parameters */}
+          {/* Part Parameters Column */}
           <div className="p-4 border rounded-lg space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Box className="w-5 h-5" />
               <h2 className="text-xl font-semibold">Part Parameters</h2>
             </div>
-
             <div className="mb-4">
-              <label className="text-sm font-medium">Part Presets:</label>
+              <label className="text-sm font-semibold">Part Presets:</label>
               <select
                   className="w-full border rounded p-2 mt-1"
                   onChange={(e) => setPartParams(PART_PRESETS[e.target.value])}
               >
-                {Object.keys(PART_PRESETS).map(preset => (
-                    <option key={preset} value={preset}>{preset}</option>
+                {Object.keys(PART_PRESETS).map((preset) => (
+                    <option key={preset} value={preset}>
+                      {preset}
+                    </option>
                 ))}
               </select>
             </div>
-
             <div className="space-y-2">
               {Object.entries(partParams).map(([key, value]) => (
                   <div key={key} className="flex flex-col">
-                    <label className="text-sm font-medium">
+                    <label className="text-sm font-semibold mb-1">
                       {key.replace(/([A-Z])/g, ' $1').trim()} ({PART_PARAM_UNITS[key]}):
                     </label>
                     <input
                         type="number"
                         value={value}
-                        onChange={(e) => setPartParams(prev => ({
-                          ...prev,
-                          [key]: parseFloat(e.target.value)
-                        }))}
+                        onChange={(e) =>
+                            setPartParams((prev) => ({
+                              ...prev,
+                              [key]: parseFloat(e.target.value),
+                            }))
+                        }
                         className="border rounded p-1"
                         step="any"
                     />
@@ -272,56 +277,69 @@ export default function Home() {
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Results */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="p-4 border rounded-lg bg-blue-50">
-            <div className="flex items-center gap-2 mb-4">
-              <DollarSign className="w-5 h-5" />
-              <h2 className="text-xl font-semibold">Cost Breakdown</h2>
-            </div>
-            <div className="space-y-2">
-              <p className="text-lg font-semibold">Total Cost: €{results.totalCost.toFixed(2)}</p>
-              <p>Material Cost: €{results.materialCost.toFixed(2)}</p>
-              <p>Machine Cost: €{results.machineCost.toFixed(2)}</p>
-              <p>Setup Cost: €5.00</p>
-            </div>
-            <div className="mt-4 h-64">
-              <LineChart width={400} height={200} data={costBreakdownData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="cost" stroke="#8884d8" />
-              </LineChart>
-            </div>
-          </div>
+          {/* Calculation Results Column */}
+          <div className="space-y-6">
+            <button
+                className="w-full p-2 bg-blue-500 text-white rounded-lg font-semibold"
+                onClick={calculateResults}
+            >
+              Calculate
+            </button>
 
-          <div className="p-4 border rounded-lg bg-blue-50">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="w-5 h-5" />
-              <h2 className="text-xl font-semibold">Time Analysis</h2>
-            </div>
-            <div className="space-y-2">
-              <p className="text-lg font-semibold">Total Print Time: {results.printTimeHours.toFixed(2)} hours</p>
-              <p>Wall Print Time: {results.wallTimeHours.toFixed(2)} hours</p>
-              <p>Infill Print Time: {results.infillTimeHours.toFixed(2)} hours</p>
-              <p>Shell Ratio: {results.shellRatio.toFixed(3)}</p>
-              <p>Shell Penalty: {results.shellPenalty.toFixed(2)}x</p>
-              <p>Material Volume: {results.materialVolumeCm3.toFixed(2)} cm³</p>
-            </div>
-            <div className="mt-4 h-64">
-              <LineChart width={400} height={200} data={timeBreakdownData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="time" stroke="#82ca9d" />
-              </LineChart>
-            </div>
+            {/* Cost Breakdown */}
+            {results && (
+                <div className="p-4 border rounded-lg bg-blue-50 space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <DollarSign className="w-5 h-5" />
+                    <h2 className="text-xl font-semibold">Cost Breakdown</h2>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold">Total Cost: €{results.totalCost.toFixed(2)}</p>
+                    <p>Material Cost: €{results.materialCost.toFixed(2)}</p>
+                    <p>Machine Cost: €{results.machineCost.toFixed(2)}</p>
+                    <p>Setup Cost: €5.00</p>
+                  </div>
+                  <div className="mt-4 h-36">
+                    <LineChart width={300} height={150} data={costBreakdownData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="cost" stroke="#8884d8" />
+                    </LineChart>
+                  </div>
+                </div>
+            )}
+
+            {/* Time Analysis */}
+            {results && (
+                <div className="p-4 border rounded-lg bg-blue-50 space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-5 h-5" />
+                    <h2 className="text-xl font-semibold">Time Analysis</h2>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold">Total Print Time: {results.printTimeHours.toFixed(2)} hours</p>
+                    <p>Wall Print Time: {results.wallTimeHours.toFixed(2)} hours</p>
+                    <p>Infill Print Time: {results.infillTimeHours.toFixed(2)} hours</p>
+                    <p>Shell Ratio: {results.shellRatio.toFixed(3)}</p>
+                    <p>Shell Penalty: {results.shellPenalty.toFixed(2)}x</p>
+                    <p>Material Volume: {results.materialVolumeCm3.toFixed(2)} cm³</p>
+                  </div>
+                  <div className="mt-4 h-36">
+                    <LineChart width={300} height={150} data={timeBreakdownData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="time" stroke="#82ca9d" />
+                    </LineChart>
+                  </div>
+                </div>
+            )}
           </div>
         </div>
       </div>
