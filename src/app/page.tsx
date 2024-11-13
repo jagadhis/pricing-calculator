@@ -16,6 +16,7 @@ type PrinterSettings = {
   materialDensity: number;
   numWalls: number;
   supportDensity: number;
+  setupCost: number;
 };
 
 type PartParams = {
@@ -39,6 +40,8 @@ type Results = {
   machineCost: number;
   wallTimeHours: number;
   infillTimeHours: number;
+  materialFlowRate: number;
+  setupCost: number;
 };
 
 const PRESETS: Record<string, PrinterSettings> = {
@@ -54,6 +57,7 @@ const PRESETS: Record<string, PrinterSettings> = {
     materialDensity: 1.24,
     numWalls: 2,
     supportDensity: 0.2,
+    setupCost: 5
   },
   "Large 1.0mm": {
     nozzleDiameter: 1.0,
@@ -67,6 +71,7 @@ const PRESETS: Record<string, PrinterSettings> = {
     materialDensity: 1.24,
     numWalls: 2,
     supportDensity: 0.2,
+    setupCost: 5
   },
   "High Speed 0.6mm": {
     nozzleDiameter: 0.6,
@@ -80,6 +85,7 @@ const PRESETS: Record<string, PrinterSettings> = {
     materialDensity: 1.24,
     numWalls: 2,
     supportDensity: 0.2,
+    setupCost: 5
   }
 };
 
@@ -127,7 +133,8 @@ const PRINTER_SETTING_UNITS: { [key: string]: string } = {
   machineCostPerHour: "€/hour",
   materialDensity: "g/cm³",
   numWalls: "count",
-  supportDensity: "ratio"
+  supportDensity: "ratio",
+  setupCost: "€"
 };
 
 const PART_PARAM_UNITS: { [key: string]: string } = {
@@ -169,9 +176,11 @@ export default function Home() {
     const weightKg = (totalVolumeCm3 * printerSettings.materialDensity) / 1000;
     const materialCost = weightKg * printerSettings.materialCostPerKg;
     const machineCost = totalTime * printerSettings.machineCostPerHour;
+    const materialFlowRate = printerSettings.nozzleDiameter * printerSettings.layerHeight * printerSettings.basePrintSpeed;
+    const setupCost = printerSettings.setupCost;
 
     setResults({
-      totalCost: materialCost + machineCost + 5.0,
+      totalCost: materialCost + machineCost + setupCost,
       printTimeHours: totalTime,
       shellRatio,
       shellPenalty,
@@ -180,6 +189,8 @@ export default function Home() {
       machineCost,
       wallTimeHours: wallTime / 3600,
       infillTimeHours: infillTime / 3600,
+      materialFlowRate,
+      setupCost
     });
   };
 
@@ -194,7 +205,7 @@ export default function Home() {
       ? [
         { name: 'Material', cost: results.materialCost },
         { name: 'Machine', cost: results.machineCost },
-        { name: 'Setup', cost: 5.0 },
+        { name: 'Setup', cost: results.setupCost },
       ]
       : [];
 
@@ -306,7 +317,7 @@ export default function Home() {
                     <p className="text-lg font-semibold">Total Cost: €{results.totalCost.toFixed(2)}</p>
                     <p>Material Cost: €{results.materialCost.toFixed(2)}</p>
                     <p>Machine Cost: €{results.machineCost.toFixed(2)}</p>
-                    <p>Setup Cost: €5.00</p>
+                    <p>Setup Cost: €{results.setupCost.toFixed(2)}</p>
                   </div>
                   <div className="mt-4 h-36">
                     <LineChart width={300} height={150} data={costBreakdownData}>
@@ -334,6 +345,7 @@ export default function Home() {
                     <p>Shell Ratio: {results.shellRatio.toFixed(3)}</p>
                     <p>Shell Penalty: {results.shellPenalty.toFixed(2)}x</p>
                     <p>Material Volume: {results.materialVolumeCm3.toFixed(2)} cm³</p>
+                    <p>Material Flow Rate: {results.materialFlowRate.toFixed(2)} mm³/s</p>
                   </div>
                   <div className="mt-4 h-36">
                     <LineChart width={300} height={150} data={timeBreakdownData}>
